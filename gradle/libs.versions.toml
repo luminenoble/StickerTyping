@@ -8,6 +8,7 @@ splitties = "3.0.0"
 aboutlibraries = "13.1.0"
 kotest = "6.0.7"
 iconics = "5.4.0"
+coil = "2.7.0"
 
 [libraries]
 android-gradlePlugin = { group = "com.android.tools.build", name = "gradle", version.ref = "androidGradlePlugin" }
@@ -30,6 +31,9 @@ androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }
 androidx-room-paging = { module = "androidx.room:room-paging", version.ref = "room" }
 androidx-viewpager2 = { module = "androidx.viewpager2:viewpager2", version = "1.1.0" }
 androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version = "2.9.1" }
+coil = { module = "io.coil-kt:coil", version.ref = "coil" }
+coil-gif = { module = "io.coil-kt:coil-gif", version.ref = "coil" }
+coil-video = { module = "io.coil-kt:coil-video", version.ref = "coil" }
 flexbox = { module = "com.google.android.flexbox:flexbox", version = "3.0.0" }
 bravh = { module = "io.github.cymchad:BaseRecyclerViewAdapterHelper4", version = "4.3.2" }
 timber = { module = "com.jakewharton.timber:timber", version = "5.0.1" }

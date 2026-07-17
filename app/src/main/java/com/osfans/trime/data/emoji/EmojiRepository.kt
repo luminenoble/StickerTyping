@@ -226,4 +226,71 @@ object EmojiRepository : CoroutineScope by CoroutineScope(SupervisorJob() + Disp
     suspend fun markUsed(id: Long) = emojiDao.incrementUse(id, System.currentTimeMillis())
 
     // endregion
+
+    // region backup
+
+    /** Snapshot the whole metadata layer into the JSON round-trip format. */
+    suspend fun exportBackup(): EmojiBackup {
+        val collections = collectionDao.getAllWithTags()
+        return EmojiBackup(
+            collections =
+            collections.map { c ->
+                EmojiBackup.CollectionBackup(
+                    name = c.collection.name,
+                    folderPath = c.collection.folderPath,
+                    tags = c.tags.map { it.name },
+                    emojis =
+                    emojiDao.getByCollectionWithTags(c.collection.id).map { e ->
+                        EmojiBackup.EmojiItemBackup(
+                            filePath = e.emoji.filePath,
+                            fileName = e.emoji.filePath.substringAfterLast('/'),
+                            primaryTag = e.primaryTag.name,
+                            tags = e.tags.map { it.name },
+                            isFavorite = e.emoji.isFavorite,
+                            useCount = e.emoji.useCount,
+                            lastUsedAt = e.emoji.lastUsedAt,
+                        )
+                    },
+                )
+            },
+        )
+    }
+
+    /** Per-collection outcome of [importBackup]. */
+    data class ImportReport(val collections: Int, val restored: Int, val missing: Int)
+
+    /**
+     * Merge a backup into the database: register every collection (scanning its folder),
+     * then restore primary tag / tags / favorite / usage onto each emoji whose file
+     * still exists at the recorded path. Emojis whose files are gone are counted in
+     * [ImportReport.missing] and skipped.
+     */
+    suspend fun importBackup(backup: EmojiBackup): ImportReport {
+        var restored = 0
+        var missing = 0
+        for (c in backup.collections) {
+            addCollection(c.name, c.folderPath)
+            val collection = collectionDao.getByFolderPath(c.folderPath) ?: continue
+            for (tag in c.tags) {
+                addTagToCollection(collection.id, tag)
+            }
+            for (item in c.emojis) {
+                val emoji = emojiDao.getByPath(item.filePath)
+                if (emoji == null) {
+                    missing++
+                    continue
+                }
+                setPrimaryTag(emoji.id, item.primaryTag)
+                for (tag in item.tags) {
+                    addTagToEmoji(emoji.id, tag)
+                }
+                emojiDao.setFavorite(listOf(emoji.id), item.isFavorite)
+                emojiDao.setUsage(emoji.id, item.useCount, item.lastUsedAt)
+                restored++
+            }
+        }
+        return ImportReport(backup.collections.size, restored, missing)
+    }
+
+    // endregion
 }

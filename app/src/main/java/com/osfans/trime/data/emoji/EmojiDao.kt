@@ -27,6 +27,12 @@ interface EmojiDao {
     @Query("SELECT * FROM emoji WHERE id = :id")
     suspend fun getById(id: Long): EmojiEntity?
 
+    @Query("SELECT * FROM emoji WHERE filePath = :filePath")
+    suspend fun getByPath(filePath: String): EmojiEntity?
+
+    @Query("UPDATE emoji SET useCount = :useCount, lastUsedAt = :lastUsedAt WHERE id = :id")
+    suspend fun setUsage(id: Long, useCount: Int, lastUsedAt: Long)
+
     @Query("DELETE FROM emoji WHERE filePath IN (:filePaths)")
     suspend fun deleteByPaths(filePaths: List<String>)
 

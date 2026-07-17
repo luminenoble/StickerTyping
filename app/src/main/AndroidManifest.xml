@@ -68,6 +68,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
             android:exported="false" />
 
         <activity
+            android:name=".ui.emoji.EmojiManagerActivity"
+            android:exported="false"
+            android:label="@string/emoji_manager"
+            android:launchMode="singleTask"
+            android:parentActivityName=".ui.main.MainActivity" />
+
+        <activity
             android:name=".ui.main.LogActivity"
             android:exported="false"
             android:launchMode="singleTask"

@@ -5,6 +5,7 @@
 
 package com.osfans.trime.ui.main
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
@@ -13,6 +14,7 @@ import androidx.navigation.fragment.findNavController
 import androidx.preference.PreferenceGroup
 import com.osfans.trime.R
 import com.osfans.trime.ui.common.PaddingPreferenceFragment
+import com.osfans.trime.ui.emoji.EmojiManagerActivity
 import com.osfans.trime.util.addCategory
 import com.osfans.trime.util.addPreference
 import com.osfans.trime.util.navigateWithAnim
@@ -87,6 +89,9 @@ class MainFragment : PaddingPreferenceFragment() {
                     R.drawable.ic_clipboard_24,
                     NavigationRoute.Clipboard,
                 )
+                addPreference(R.string.emoji_manager, icon = R.drawable.ic_baseline_emoji_emotions_24) {
+                    startActivity(Intent(requireContext(), EmojiManagerActivity::class.java))
+                }
                 addDestinationPreference(
                     R.string.advanced,
                     R.drawable.ic_baseline_more_horiz_24,
