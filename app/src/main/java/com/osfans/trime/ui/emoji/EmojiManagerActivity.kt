@@ -58,6 +58,10 @@ class EmojiManagerActivity : AppCompatActivity() {
         push(KaomojiFragment())
     }
 
+    fun showEmojiDetail(emojiId: Long) {
+        push(EmojiDetailFragment.newInstance(emojiId))
+    }
+
     private fun push(fragment: androidx.fragment.app.Fragment) {
         supportFragmentManager
             .beginTransaction()

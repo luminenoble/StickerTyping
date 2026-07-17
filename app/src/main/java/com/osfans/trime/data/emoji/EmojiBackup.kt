@@ -27,6 +27,7 @@ data class EmojiBackup(
         val isFavorite: Boolean,
         val useCount: Int,
         val lastUsedAt: Long,
+        val group: String? = null,
     )
 
     @Serializable
@@ -46,5 +47,27 @@ data class EmojiBackup(
         val isFavorite: Boolean,
         val useCount: Int,
         val lastUsedAt: Long,
+    )
+}
+
+/**
+ * Standalone kaomoji pack format for sharing/importing kaomoji sets independently of a
+ * full backup: groups of entries, each with a mandatory primary tag.
+ */
+@Serializable
+data class KaomojiPack(
+    val groups: List<Group>,
+) {
+    @Serializable
+    data class Group(
+        val name: String,
+        val items: List<Item>,
+    )
+
+    @Serializable
+    data class Item(
+        val text: String,
+        val primaryTag: String = "",
+        val tags: List<String> = emptyList(),
     )
 }

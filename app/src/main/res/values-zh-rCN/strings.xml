@@ -286,4 +286,26 @@
     <string name="kaomoji_import_result">已导入 %d 条颜文字</string>
     <string name="emoji_primary_tag_required">主标签必填</string>
     <string name="emoji_search_strip_hint">打字并点选候选词即可搜索标签</string>
+    <string name="emoji_panel_title">表情</string>
+    <string name="emoji_copied_to_clipboard">已复制,长按输入框粘贴</string>
+    <string name="emoji_change">修改</string>
+    <string name="emoji_primary_chip">[%s]</string>
+    <string name="emoji_tag_chip">%s ✕</string>
+    <string name="emoji_delete_entry">清除登记</string>
+    <string name="emoji_delete_entry_warn">仅从库中清除;文件保留,下次同步会重新登记。</string>
+    <string name="emoji_delete_disk">从磁盘删除</string>
+    <string name="emoji_delete_disk_warn">同时删除图片文件,不可恢复。</string>
+    <string name="emoji_detail_info">收藏夹:%1$s\n路径:%2$s\n已发送 %3$d 次</string>
+    <string name="kaomoji_ungrouped">未分组</string>
+    <string name="kaomoji_group_ops">分组操作</string>
+    <string name="kaomoji_set_group">设置分组</string>
+    <string name="kaomoji_new_group">新建分组…</string>
+    <string name="kaomoji_delete_group">删除分组</string>
+    <string name="kaomoji_delete_group_warn">组内颜文字保留,变为未分组。</string>
+    <string name="kaomoji_group_optional">分组(可选)</string>
+    <string name="kaomoji_import_folder">从文件夹导入颜文字</string>
+    <string name="kaomoji_import_folder_summary">文件夹内每个 txt 文件成为一个分组,主标签默认为分组名</string>
+    <string name="kaomoji_import_folder_result">导入 %1$d 组、%2$d 条颜文字</string>
+    <string name="kaomoji_import_json">从 JSON 导入颜文字</string>
+    <string name="kaomoji_import_json_summary">包格式:分组 + 条目(含主标签与标签)</string>
 </resources>

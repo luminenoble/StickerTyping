@@ -214,6 +214,26 @@ object EmojiRepository : CoroutineScope by CoroutineScope(SupervisorJob() + Disp
 
     suspend fun allEmojis(): List<EmojiWithTags> = emojiDao.getAllWithTags()
 
+    suspend fun emojiWithTags(id: Long): EmojiWithTags? = emojiDao.getWithTagsById(id)
+
+    /**
+     * Delete emoji registrations. With [deleteFiles] the image files are removed from
+     * disk too; without it only the DB rows go — note the next folder sync re-registers
+     * files that still exist.
+     */
+    suspend fun deleteEmojis(ids: List<Long>, deleteFiles: Boolean) {
+        val rows = emojiDao.getByIds(ids)
+        db.withTransaction {
+            emojiDao.deleteByIds(ids)
+            tagDao.deleteOrphans()
+        }
+        if (deleteFiles) {
+            for (row in rows) {
+                runCatching { java.io.File(row.filePath).delete() }
+            }
+        }
+    }
+
     suspend fun emojisByCollection(collectionId: Long): List<EmojiWithTags> = emojiDao.getByCollectionWithTags(collectionId)
 
     suspend fun favoriteEmojis(): List<EmojiWithTags> = emojiDao.getFavoritesWithTags()
@@ -233,17 +253,19 @@ object EmojiRepository : CoroutineScope by CoroutineScope(SupervisorJob() + Disp
     // region kaomoji
 
     /**
-     * Register a kaomoji with its mandatory primary tag (created on demand).
+     * Register a kaomoji with its mandatory primary tag (created on demand), optionally
+     * into a group (created on demand).
      *
      * @return true if a new row was inserted; false for blank/duplicate input
      */
-    suspend fun addKaomoji(text: String, primaryTagName: String): Boolean {
+    suspend fun addKaomoji(text: String, primaryTagName: String, groupName: String? = null): Boolean {
         val trimmed = text.trim()
         if (trimmed.isEmpty()) return false
         var inserted = false
         db.withTransaction {
             val tagId = getOrCreateTag(primaryTagName) ?: return@withTransaction
-            val id = kaomojiDao.insert(KaomojiEntity(text = trimmed, primaryTagId = tagId))
+            val groupId = groupName?.let { getOrCreateKaomojiGroup(it) }
+            val id = kaomojiDao.insert(KaomojiEntity(text = trimmed, primaryTagId = tagId, groupId = groupId))
             if (id > 0) {
                 tagDao.insertKaomojiCrossRef(KaomojiTagCrossRef(id, tagId))
                 inserted = true
@@ -254,8 +276,59 @@ object EmojiRepository : CoroutineScope by CoroutineScope(SupervisorJob() + Disp
         return inserted
     }
 
-    /** Batch-register kaomojis (one per line), all under [primaryTagName]. */
-    suspend fun importKaomojiLines(lines: List<String>, primaryTagName: String): Int = lines.map { it.trim() }.filter { it.isNotEmpty() }.distinct().count { addKaomoji(it, primaryTagName) }
+    /** Batch-register kaomojis (one per line), all under [primaryTagName]/[groupName]. */
+    suspend fun importKaomojiLines(lines: List<String>, primaryTagName: String, groupName: String? = null): Int = lines
+        .map { it.trim() }
+        .filter { it.isNotEmpty() }
+        .distinct()
+        .count { addKaomoji(it, primaryTagName, groupName) }
+
+    /**
+     * Import a folder of .txt files: each file becomes a group named after the file
+     * (without extension), each line a kaomoji whose primary tag defaults to the group
+     * name (retag later in the manager).
+     *
+     * @return (groups, added)
+     */
+    suspend fun importKaomojiFolder(folderPath: String): Pair<Int, Int> {
+        val root = java.io.File(folderPath)
+        if (!root.isDirectory) return 0 to 0
+        var groups = 0
+        var added = 0
+        root.listFiles { f -> f.isFile && f.extension.lowercase() == "txt" }?.forEach { file ->
+            val group = file.nameWithoutExtension.trim()
+            if (group.isEmpty()) return@forEach
+            groups++
+            added += importKaomojiLines(file.readLines(), group, group)
+        }
+        return groups to added
+    }
+
+    suspend fun kaomojiGroups(): List<KaomojiGroupEntity> = kaomojiDao.getAllGroups()
+
+    suspend fun setKaomojiGroup(ids: List<Long>, groupName: String?) {
+        db.withTransaction {
+            val groupId = groupName?.let { getOrCreateKaomojiGroup(it) }
+            kaomojiDao.setGroup(ids, groupId)
+        }
+    }
+
+    suspend fun renameKaomojiGroup(groupId: Long, name: String) {
+        val trimmed = name.trim()
+        if (trimmed.isNotEmpty()) kaomojiDao.renameGroup(groupId, trimmed)
+    }
+
+    /** Delete a group; its kaomojis stay, ungrouped (FK SET_NULL). */
+    suspend fun deleteKaomojiGroup(groupId: Long) = kaomojiDao.deleteGroup(groupId)
+
+    /** Get-or-create by trimmed name; null for blank. */
+    private suspend fun getOrCreateKaomojiGroup(rawName: String): Long? {
+        val name = rawName.trim()
+        if (name.isEmpty()) return null
+        val inserted = kaomojiDao.insertGroup(KaomojiGroupEntity(name = name))
+        if (inserted > 0) return inserted
+        return kaomojiDao.getGroupByName(name)?.id
+    }
 
     suspend fun allKaomoji(): List<KaomojiWithTags> = kaomojiDao.getAllWithTags()
 
@@ -315,6 +388,7 @@ object EmojiRepository : CoroutineScope by CoroutineScope(SupervisorJob() + Disp
     /** Snapshot the whole metadata layer into the JSON round-trip format. */
     suspend fun exportBackup(): EmojiBackup {
         val collections = collectionDao.getAllWithTags()
+        val groupNames = kaomojiDao.getAllGroups().associate { it.id to it.name }
         return EmojiBackup(
             kaomojis =
             kaomojiDao.getAllWithTags().map { k ->
@@ -325,6 +399,7 @@ object EmojiRepository : CoroutineScope by CoroutineScope(SupervisorJob() + Disp
                     isFavorite = k.kaomoji.isFavorite,
                     useCount = k.kaomoji.useCount,
                     lastUsedAt = k.kaomoji.lastUsedAt,
+                    group = k.kaomoji.groupId?.let { groupNames[it] },
                 )
             },
             collections =
@@ -384,17 +459,42 @@ object EmojiRepository : CoroutineScope by CoroutineScope(SupervisorJob() + Disp
             }
         }
         for (item in backup.kaomojis) {
-            addKaomoji(item.text, item.primaryTag)
+            addKaomoji(item.text, item.primaryTag, item.group)
             val kaomoji = kaomojiDao.getByText(item.text.trim()) ?: continue
             setKaomojiPrimaryTag(kaomoji.id, item.primaryTag)
             for (tag in item.tags) {
                 addTagToKaomoji(kaomoji.id, tag)
             }
+            item.group?.let { setKaomojiGroup(listOf(kaomoji.id), it) }
             kaomojiDao.setFavorite(listOf(kaomoji.id), item.isFavorite)
             kaomojiDao.setUsage(kaomoji.id, item.useCount, item.lastUsedAt)
             restored++
         }
         return ImportReport(backup.collections.size, restored, missing)
+    }
+
+    /**
+     * Import a standalone [KaomojiPack]: entries land in their group; a blank
+     * primaryTag falls back to the group name (so the mandatory-primary-tag rule
+     * always holds).
+     *
+     * @return (groups, added)
+     */
+    suspend fun importKaomojiPack(pack: KaomojiPack): Pair<Int, Int> {
+        var added = 0
+        for (group in pack.groups) {
+            for (item in group.items) {
+                val primary = item.primaryTag.trim().ifEmpty { group.name }
+                if (addKaomoji(item.text, primary, group.name)) {
+                    added++
+                }
+                val row = kaomojiDao.getByText(item.text.trim()) ?: continue
+                for (tag in item.tags) {
+                    addTagToKaomoji(row.id, tag)
+                }
+            }
+        }
+        return pack.groups.size to added
     }
 
     // endregion

@@ -1034,7 +1034,10 @@ tool_bar:
 
   kaomoji_button: &kaomoji_button
     foreground:
-      style: "ic@emoticon-outline"
+      style: "颜"
+      font_size: 16
+      normal: candidate_text_color
+      padding: 10
     action: kaomoji_window
 
   emoji_search_button: &emoji_search_button

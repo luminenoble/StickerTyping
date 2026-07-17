@@ -44,4 +44,22 @@ interface KaomojiDao {
 
     @Query("UPDATE kaomoji SET primaryTagId = :tagId WHERE id = :id")
     suspend fun setPrimaryTag(id: Long, tagId: Long)
+
+    @Query("UPDATE kaomoji SET groupId = :groupId WHERE id IN (:ids)")
+    suspend fun setGroup(ids: List<Long>, groupId: Long?)
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertGroup(group: KaomojiGroupEntity): Long
+
+    @Query("SELECT * FROM kaomoji_group ORDER BY name")
+    suspend fun getAllGroups(): List<KaomojiGroupEntity>
+
+    @Query("SELECT * FROM kaomoji_group WHERE name = :name")
+    suspend fun getGroupByName(name: String): KaomojiGroupEntity?
+
+    @Query("UPDATE kaomoji_group SET name = :name WHERE id = :id")
+    suspend fun renameGroup(id: Long, name: String)
+
+    @Query("DELETE FROM kaomoji_group WHERE id = :id")
+    suspend fun deleteGroup(id: Long)
 }

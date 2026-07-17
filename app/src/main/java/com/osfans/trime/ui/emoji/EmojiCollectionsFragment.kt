@@ -52,7 +52,11 @@ class EmojiCollectionsFragment : Fragment() {
         EmojiManageAdapter(
             isSelected = { it in selectedIds },
             onClick = { item ->
-                if (selectionMode) toggleSelection(item) else showItemDialog(item)
+                if (selectionMode) {
+                    toggleSelection(item)
+                } else {
+                    (requireActivity() as EmojiManagerActivity).showEmojiDetail(item.emoji.id)
+                }
             },
             onLongClick = { item ->
                 if (!selectionMode) {
@@ -175,61 +179,6 @@ class EmojiCollectionsFragment : Fragment() {
         requireActivity().invalidateOptionsMenu()
         updateTitle()
     }
-
-    // region single-item actions
-
-    private fun showItemDialog(item: EmojiWithTags) {
-        val favLabel = getString(if (item.emoji.isFavorite) R.string.emoji_unfavorite else R.string.emoji_favorite)
-        val actions =
-            arrayOf(
-                getString(R.string.emoji_set_primary_tag),
-                getString(R.string.emoji_add_tag),
-                getString(R.string.emoji_remove_tag),
-                favLabel,
-            )
-        AlertDialog
-            .Builder(requireContext())
-            .setTitle(item.primaryTag.name)
-            .setItems(actions) { _, which ->
-                when (which) {
-                    0 ->
-                        promptInput(getString(R.string.emoji_set_primary_tag), item.primaryTag.name) { name ->
-                            runAndRefresh { EmojiRepository.setPrimaryTag(item.emoji.id, name) }
-                        }
-                    1 ->
-                        promptInput(getString(R.string.emoji_add_tag)) { name ->
-                            runAndRefresh { EmojiRepository.addTagToEmoji(item.emoji.id, name) }
-                        }
-                    2 -> promptRemoveTag(item)
-                    3 -> runAndRefresh { EmojiRepository.setFavorite(listOf(item.emoji.id), !item.emoji.isFavorite) }
-                }
-            }.setNegativeButton(R.string.cancel, null)
-            .show()
-    }
-
-    private fun promptRemoveTag(item: EmojiWithTags) {
-        val removable = item.tags.filter { it.id != item.emoji.primaryTagId }
-        if (removable.isEmpty()) {
-            requireContext().toast(R.string.emoji_no_removable_tags)
-            return
-        }
-        val checked = BooleanArray(removable.size)
-        AlertDialog
-            .Builder(requireContext())
-            .setTitle(R.string.emoji_remove_tag)
-            .setMultiChoiceItems(removable.map { it.name }.toTypedArray(), checked) { _, i, isChecked ->
-                checked[i] = isChecked
-            }.setPositiveButton(R.string.ok) { _, _ ->
-                runAndRefresh {
-                    removable.forEachIndexed { i, tag ->
-                        if (checked[i]) EmojiRepository.removeTagFromEmoji(item.emoji.id, tag.id)
-                    }
-                }
-            }.setNegativeButton(R.string.cancel, null)
-            .show()
-    }
-
-    // endregion
 
     // region collection actions
 

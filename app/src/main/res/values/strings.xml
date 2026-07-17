@@ -287,4 +287,26 @@
     <string name="kaomoji_import_result">Imported %d kaomoji</string>
     <string name="emoji_primary_tag_required">Primary tag is required</string>
     <string name="emoji_search_strip_hint">Pick candidates to search tags</string>
+    <string name="emoji_panel_title">Emoji</string>
+    <string name="emoji_copied_to_clipboard">Copied — long-press the input box to paste</string>
+    <string name="emoji_change">Change</string>
+    <string name="emoji_primary_chip">[%s]</string>
+    <string name="emoji_tag_chip">%s ✕</string>
+    <string name="emoji_delete_entry">Unregister</string>
+    <string name="emoji_delete_entry_warn">Removes only the database entry; the file stays and will be re-registered on the next sync.</string>
+    <string name="emoji_delete_disk">Delete from disk</string>
+    <string name="emoji_delete_disk_warn">Deletes the image file as well. This cannot be undone.</string>
+    <string name="emoji_detail_info">Collection: %1$s\nPath: %2$s\nSent %3$d times</string>
+    <string name="kaomoji_ungrouped">Ungrouped</string>
+    <string name="kaomoji_group_ops">Group actions</string>
+    <string name="kaomoji_set_group">Set group</string>
+    <string name="kaomoji_new_group">New group…</string>
+    <string name="kaomoji_delete_group">Delete group</string>
+    <string name="kaomoji_delete_group_warn">Kaomojis in this group are kept and become ungrouped.</string>
+    <string name="kaomoji_group_optional">Group (optional)</string>
+    <string name="kaomoji_import_folder">Import kaomoji folder</string>
+    <string name="kaomoji_import_folder_summary">Each .txt file in the folder becomes a group; primary tag defaults to the group name</string>
+    <string name="kaomoji_import_folder_result">%1$d groups, %2$d kaomoji imported</string>
+    <string name="kaomoji_import_json">Import kaomoji from JSON</string>
+    <string name="kaomoji_import_json_summary">Pack format: groups of entries with primary tag and tags</string>
 </resources>

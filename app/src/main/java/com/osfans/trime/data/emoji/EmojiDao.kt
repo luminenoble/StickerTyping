@@ -36,6 +36,16 @@ interface EmojiDao {
     @Query("DELETE FROM emoji WHERE filePath IN (:filePaths)")
     suspend fun deleteByPaths(filePaths: List<String>)
 
+    @Query("SELECT * FROM emoji WHERE id IN (:ids)")
+    suspend fun getByIds(ids: List<Long>): List<EmojiEntity>
+
+    @Query("DELETE FROM emoji WHERE id IN (:ids)")
+    suspend fun deleteByIds(ids: List<Long>)
+
+    @Transaction
+    @Query("SELECT * FROM emoji WHERE id = :id")
+    suspend fun getWithTagsById(id: Long): EmojiWithTags?
+
     @Transaction
     @Query("SELECT * FROM emoji")
     suspend fun getAllWithTags(): List<EmojiWithTags>

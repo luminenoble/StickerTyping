@@ -25,10 +25,17 @@ import androidx.room.PrimaryKey
             childColumns = ["primaryTagId"],
             onDelete = ForeignKey.RESTRICT,
         ),
+        ForeignKey(
+            entity = KaomojiGroupEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["groupId"],
+            onDelete = ForeignKey.SET_NULL,
+        ),
     ],
     indices = [
         Index(value = ["text"], unique = true),
         Index(value = ["primaryTagId"]),
+        Index(value = ["groupId"]),
     ],
 )
 data class KaomojiEntity(
@@ -36,6 +43,7 @@ data class KaomojiEntity(
     val id: Long = 0,
     val text: String,
     val primaryTagId: Long,
+    val groupId: Long? = null,
     val useCount: Int = 0,
     val lastUsedAt: Long = 0,
     val isFavorite: Boolean = false,

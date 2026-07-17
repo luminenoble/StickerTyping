@@ -16,6 +16,7 @@ import androidx.preference.PreferenceScreen
 import com.osfans.trime.R
 import com.osfans.trime.data.emoji.EmojiBackup
 import com.osfans.trime.data.emoji.EmojiRepository
+import com.osfans.trime.data.emoji.KaomojiPack
 import com.osfans.trime.ui.common.PaddingPreferenceFragment
 import com.osfans.trime.util.getFileFromUri
 import com.osfans.trime.util.requestExternalStoragePermission
@@ -76,6 +77,29 @@ class EmojiSettingsFragment : PaddingPreferenceFragment() {
             }
         }
 
+    private val pickKaomojiFolder =
+        registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+            uri ?: return@registerForActivityResult
+            val docUri =
+                DocumentsContract.buildDocumentUriUsingTree(uri, DocumentsContract.getTreeDocumentId(uri))
+                    ?: return@registerForActivityResult
+            val folder = requireContext().getFileFromUri(docUri) ?: return@registerForActivityResult
+            runWithToast {
+                val (groups, added) = EmojiRepository.importKaomojiFolder(folder.absolutePath)
+                getString(R.string.kaomoji_import_folder_result, groups, added)
+            }
+        }
+
+    private val importKaomojiJson =
+        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            uri ?: return@registerForActivityResult
+            runWithToast {
+                val pack = json.decodeFromString(KaomojiPack.serializer(), readText(uri))
+                val (groups, added) = EmojiRepository.importKaomojiPack(pack)
+                getString(R.string.kaomoji_import_folder_result, groups, added)
+            }
+        }
+
     override fun onResume() {
         super.onResume()
         (requireActivity() as? EmojiManagerActivity)?.supportActionBar?.setTitle(R.string.emoji_settings)
@@ -95,6 +119,12 @@ class EmojiSettingsFragment : PaddingPreferenceFragment() {
                 }
                 addClickPreference(R.string.kaomoji_import_txt, R.string.kaomoji_import_txt_summary) {
                     importKaomojiTxt.launch(arrayOf("text/*"))
+                }
+                addClickPreference(R.string.kaomoji_import_folder, R.string.kaomoji_import_folder_summary) {
+                    pickKaomojiFolder.launch(null)
+                }
+                addClickPreference(R.string.kaomoji_import_json, R.string.kaomoji_import_json_summary) {
+                    importKaomojiJson.launch(arrayOf("application/json"))
                 }
                 addClickPreference(R.string.emoji_export_json) {
                     exportJson.launch("emoji-backup.json")
@@ -123,19 +153,29 @@ class EmojiSettingsFragment : PaddingPreferenceFragment() {
     }
 
     private fun promptKaomojiTag(lines: List<String>) {
-        val edit = EditText(requireContext())
+        val context = requireContext()
+        val tagInput = EditText(context).apply { hint = getString(R.string.emoji_set_primary_tag) }
+        val groupInput = EditText(context).apply { hint = getString(R.string.kaomoji_group_optional) }
+        val layout =
+            android.widget.LinearLayout(context).apply {
+                orientation = android.widget.LinearLayout.VERTICAL
+                setPadding(48, 16, 48, 0)
+                addView(tagInput)
+                addView(groupInput)
+            }
         AlertDialog
-            .Builder(requireContext())
-            .setTitle(R.string.emoji_set_primary_tag)
-            .setView(edit)
+            .Builder(context)
+            .setTitle(R.string.kaomoji_import_txt)
+            .setView(layout)
             .setPositiveButton(R.string.ok) { _, _ ->
-                val tag = edit.text.toString().trim()
+                val tag = tagInput.text.toString().trim()
                 if (tag.isEmpty()) {
-                    requireContext().toast(R.string.emoji_primary_tag_required)
+                    context.toast(R.string.emoji_primary_tag_required)
                     return@setPositiveButton
                 }
+                val group = groupInput.text.toString().trim().ifEmpty { null }
                 runWithToast {
-                    val added = EmojiRepository.importKaomojiLines(lines, tag)
+                    val added = EmojiRepository.importKaomojiLines(lines, tag, group)
                     getString(R.string.kaomoji_import_result, added)
                 }
             }.setNegativeButton(R.string.cancel, null)

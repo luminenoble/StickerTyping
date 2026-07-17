@@ -58,10 +58,14 @@ class EmojiSearchStrip(
 
     private val resultsAdapter =
         EmojiPanelAdapter(cellWidthPx = ctx.dp(84)) { item ->
-            if (sender.send(item.emoji)) {
-                service.lifecycleScope.launch { EmojiRepository.markUsed(item.emoji.id) }
-            } else {
-                service.toast(R.string.emoji_send_failed)
+            when (sender.send(item.emoji)) {
+                EmojiContentSender.Result.COMMITTED ->
+                    service.lifecycleScope.launch { EmojiRepository.markUsed(item.emoji.id) }
+                EmojiContentSender.Result.COPIED -> {
+                    service.lifecycleScope.launch { EmojiRepository.markUsed(item.emoji.id) }
+                    service.toast(R.string.emoji_copied_to_clipboard)
+                }
+                EmojiContentSender.Result.FAILED -> service.toast(R.string.emoji_send_failed)
             }
         }
 

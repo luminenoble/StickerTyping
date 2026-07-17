@@ -45,11 +45,10 @@ class EmojiWindow : BoardWindow.BarBoardWindow() {
     private var collections: List<EmojiCollectionEntity> = emptyList()
     private var allItems: List<EmojiWithTags> = emptyList()
 
-    /** -1 = all collections, otherwise an index into [collections]. */
-    private var collectionIndex = -1
+    /** null = all collections, otherwise a collection name selected via the chips. */
+    private var selectedCollectionName: String? = null
     private var favOnly = false
     private var sortByUse = false
-    private var selectedTag: String? = null
 
     private lateinit var titleUi: EmojiTitleUi
     private lateinit var chipsView: RecyclerView
@@ -57,18 +56,21 @@ class EmojiWindow : BoardWindow.BarBoardWindow() {
 
     private val panelAdapter =
         EmojiPanelAdapter { item ->
-            if (sender.send(item.emoji)) {
-                item.emoji.let { sent ->
-                    service.lifecycleScope.launch { EmojiRepository.markUsed(sent.id) }
+            when (sender.send(item.emoji)) {
+                EmojiContentSender.Result.COMMITTED ->
+                    service.lifecycleScope.launch { EmojiRepository.markUsed(item.emoji.id) }
+                EmojiContentSender.Result.COPIED -> {
+                    service.lifecycleScope.launch { EmojiRepository.markUsed(item.emoji.id) }
+                    service.toast(R.string.emoji_copied_to_clipboard)
                 }
-            } else {
-                service.toast(R.string.emoji_send_failed)
+                EmojiContentSender.Result.FAILED -> service.toast(R.string.emoji_send_failed)
             }
         }
 
+    /** Chips carry collection names — the panel's grouping dimension. */
     private val chipAdapter by lazy {
-        EmojiTagChipAdapter(context.getString(R.string.emoji_tag_all)) { tag ->
-            selectedTag = tag
+        EmojiTagChipAdapter(context.getString(R.string.emoji_tag_all)) { name ->
+            selectedCollectionName = name
             applyFilters()
         }
     }
@@ -76,7 +78,7 @@ class EmojiWindow : BoardWindow.BarBoardWindow() {
     override fun onCreateView(): View {
         titleUi = EmojiTitleUi(context, theme)
         titleUi.apply {
-            collectionLabel.setOnClickListener { cycleCollection() }
+            collectionLabel.text = context.getString(R.string.emoji_panel_title)
             favButton.setOnClickListener {
                 favOnly = !favOnly
                 applyFilters()
@@ -111,33 +113,26 @@ class EmojiWindow : BoardWindow.BarBoardWindow() {
         service.lifecycleScope.launch {
             collections = EmojiRepository.collections()
             allItems = EmojiRepository.allEmojis()
-            if (collectionIndex >= collections.size) collectionIndex = -1
             applyFilters()
         }
     }
 
     override fun onDetached() {}
 
-    private fun currentCollection(): EmojiCollectionEntity? = collections.getOrNull(collectionIndex)
-
-    private fun cycleCollection() {
-        if (collections.isEmpty()) return
-        collectionIndex = if (collectionIndex + 1 >= collections.size) -1 else collectionIndex + 1
-        applyFilters()
-    }
-
     private fun applyFilters() {
-        var scope = allItems.asSequence()
-        currentCollection()?.let { c -> scope = scope.filter { it.emoji.collectionId == c.id } }
-        if (favOnly) scope = scope.filter { it.emoji.isFavorite }
-        val scoped = scope.toList()
+        val names = collections.map { it.name }
+        if (selectedCollectionName != null && selectedCollectionName !in names) {
+            selectedCollectionName = null
+        }
+        chipAdapter.submit(names, selectedCollectionName)
 
-        val tags = scoped.flatMap { item -> item.tags.map { it.name } }.distinct().sorted()
-        if (selectedTag != null && selectedTag !in tags) selectedTag = null
-        chipAdapter.submit(tags, selectedTag)
-
-        var items = scoped
-        selectedTag?.let { t -> items = items.filter { item -> item.tags.any { it.name == t } } }
+        var seq = allItems.asSequence()
+        selectedCollectionName?.let { name ->
+            val ids = collections.filter { it.name == name }.mapTo(HashSet()) { it.id }
+            seq = seq.filter { it.emoji.collectionId in ids }
+        }
+        if (favOnly) seq = seq.filter { it.emoji.isFavorite }
+        var items = seq.toList()
         if (sortByUse) {
             items =
                 items.sortedWith(
@@ -147,8 +142,6 @@ class EmojiWindow : BoardWindow.BarBoardWindow() {
         }
         panelAdapter.submitList(items)
 
-        titleUi.collectionLabel.text =
-            currentCollection()?.name ?: context.getString(R.string.emoji_all_collections)
         titleUi.setFavActive(favOnly)
         titleUi.setSortActive(sortByUse)
     }
