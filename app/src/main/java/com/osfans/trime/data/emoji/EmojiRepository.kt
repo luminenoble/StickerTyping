@@ -31,6 +31,8 @@ object EmojiRepository : CoroutineScope by CoroutineScope(SupervisorJob() + Disp
     private lateinit var collectionDao: EmojiCollectionDao
     private lateinit var tagDao: EmojiTagDao
 
+    private lateinit var kaomojiDao: KaomojiDao
+
     fun init(context: Context) {
         db =
             Room
@@ -39,6 +41,7 @@ object EmojiRepository : CoroutineScope by CoroutineScope(SupervisorJob() + Disp
         emojiDao = db.emojiDao()
         collectionDao = db.collectionDao()
         tagDao = db.tagDao()
+        kaomojiDao = db.kaomojiDao()
     }
 
     /** Result of one collection sync, for surfacing in the UI. */
@@ -227,12 +230,103 @@ object EmojiRepository : CoroutineScope by CoroutineScope(SupervisorJob() + Disp
 
     // endregion
 
+    // region kaomoji
+
+    /**
+     * Register a kaomoji with its mandatory primary tag (created on demand).
+     *
+     * @return true if a new row was inserted; false for blank/duplicate input
+     */
+    suspend fun addKaomoji(text: String, primaryTagName: String): Boolean {
+        val trimmed = text.trim()
+        if (trimmed.isEmpty()) return false
+        var inserted = false
+        db.withTransaction {
+            val tagId = getOrCreateTag(primaryTagName) ?: return@withTransaction
+            val id = kaomojiDao.insert(KaomojiEntity(text = trimmed, primaryTagId = tagId))
+            if (id > 0) {
+                tagDao.insertKaomojiCrossRef(KaomojiTagCrossRef(id, tagId))
+                inserted = true
+            } else {
+                tagDao.deleteOrphans()
+            }
+        }
+        return inserted
+    }
+
+    /** Batch-register kaomojis (one per line), all under [primaryTagName]. */
+    suspend fun importKaomojiLines(lines: List<String>, primaryTagName: String): Int = lines.map { it.trim() }.filter { it.isNotEmpty() }.distinct().count { addKaomoji(it, primaryTagName) }
+
+    suspend fun allKaomoji(): List<KaomojiWithTags> = kaomojiDao.getAllWithTags()
+
+    suspend fun updateKaomojiText(id: Long, text: String) {
+        val trimmed = text.trim()
+        if (trimmed.isNotEmpty()) kaomojiDao.setText(id, trimmed)
+    }
+
+    suspend fun deleteKaomoji(ids: List<Long>) {
+        db.withTransaction {
+            kaomojiDao.deleteByIds(ids)
+            tagDao.deleteOrphans()
+        }
+    }
+
+    suspend fun addTagToKaomoji(kaomojiId: Long, tagName: String) {
+        db.withTransaction {
+            val tagId = getOrCreateTag(tagName) ?: return@withTransaction
+            tagDao.insertKaomojiCrossRef(KaomojiTagCrossRef(kaomojiId, tagId))
+        }
+    }
+
+    /** Same primary-tag protection as [removeTagFromEmoji]. */
+    suspend fun removeTagFromKaomoji(kaomojiId: Long, tagId: Long): Boolean {
+        val kaomoji = kaomojiDao.getById(kaomojiId) ?: return false
+        if (kaomoji.primaryTagId == tagId) return false
+        db.withTransaction {
+            tagDao.deleteKaomojiCrossRef(kaomojiId, tagId)
+            tagDao.deleteOrphans()
+        }
+        return true
+    }
+
+    /** Same replace semantics as [setPrimaryTag]. */
+    suspend fun setKaomojiPrimaryTag(kaomojiId: Long, tagName: String, keepOldAsNormal: Boolean = false) {
+        db.withTransaction {
+            val kaomoji = kaomojiDao.getById(kaomojiId) ?: return@withTransaction
+            val tagId = getOrCreateTag(tagName) ?: return@withTransaction
+            if (tagId == kaomoji.primaryTagId) return@withTransaction
+            tagDao.insertKaomojiCrossRef(KaomojiTagCrossRef(kaomojiId, tagId))
+            kaomojiDao.setPrimaryTag(kaomojiId, tagId)
+            if (!keepOldAsNormal) {
+                tagDao.deleteKaomojiCrossRef(kaomojiId, kaomoji.primaryTagId)
+            }
+            tagDao.deleteOrphans()
+        }
+    }
+
+    suspend fun setKaomojiFavorite(ids: List<Long>, favorite: Boolean) = kaomojiDao.setFavorite(ids, favorite)
+
+    suspend fun markKaomojiUsed(id: Long) = kaomojiDao.incrementUse(id, System.currentTimeMillis())
+
+    // endregion
+
     // region backup
 
     /** Snapshot the whole metadata layer into the JSON round-trip format. */
     suspend fun exportBackup(): EmojiBackup {
         val collections = collectionDao.getAllWithTags()
         return EmojiBackup(
+            kaomojis =
+            kaomojiDao.getAllWithTags().map { k ->
+                EmojiBackup.KaomojiItemBackup(
+                    text = k.kaomoji.text,
+                    primaryTag = k.primaryTag.name,
+                    tags = k.tags.map { it.name },
+                    isFavorite = k.kaomoji.isFavorite,
+                    useCount = k.kaomoji.useCount,
+                    lastUsedAt = k.kaomoji.lastUsedAt,
+                )
+            },
             collections =
             collections.map { c ->
                 EmojiBackup.CollectionBackup(
@@ -288,6 +382,17 @@ object EmojiRepository : CoroutineScope by CoroutineScope(SupervisorJob() + Disp
                 emojiDao.setUsage(emoji.id, item.useCount, item.lastUsedAt)
                 restored++
             }
+        }
+        for (item in backup.kaomojis) {
+            addKaomoji(item.text, item.primaryTag)
+            val kaomoji = kaomojiDao.getByText(item.text.trim()) ?: continue
+            setKaomojiPrimaryTag(kaomoji.id, item.primaryTag)
+            for (tag in item.tags) {
+                addTagToKaomoji(kaomoji.id, tag)
+            }
+            kaomojiDao.setFavorite(listOf(kaomoji.id), item.isFavorite)
+            kaomojiDao.setUsage(kaomoji.id, item.useCount, item.lastUsedAt)
+            restored++
         }
         return ImportReport(backup.collections.size, restored, missing)
     }

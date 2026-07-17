@@ -276,4 +276,14 @@
     <string name="emoji_send_failed">目标应用不接受图片富媒体</string>
     <string name="emoji_tag_all">全部</string>
     <string name="emoji_wip">颜文字模块开发中</string>
+    <string name="kaomoji_manager">颜文字</string>
+    <string name="kaomoji_add">添加颜文字</string>
+    <string name="kaomoji_content">颜文字内容</string>
+    <string name="kaomoji_edit">编辑内容</string>
+    <string name="kaomoji_delete">删除</string>
+    <string name="kaomoji_import_txt">从文本文件导入颜文字</string>
+    <string name="kaomoji_import_txt_summary">一行一条;统一指定一个主标签</string>
+    <string name="kaomoji_import_result">已导入 %d 条颜文字</string>
+    <string name="emoji_primary_tag_required">主标签必填</string>
+    <string name="emoji_search_strip_hint">打字并点选候选词即可搜索标签</string>
 </resources>

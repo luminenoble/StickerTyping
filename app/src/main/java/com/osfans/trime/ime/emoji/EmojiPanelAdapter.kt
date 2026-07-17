@@ -17,13 +17,22 @@ import com.osfans.trime.databinding.ItemEmojiManageBinding
 import com.osfans.trime.ui.emoji.EmojiImaging
 import java.io.File
 
-/** Keyboard-panel grid: same cell as the manager (thumbnail + primary tag below). */
+/**
+ * Keyboard-panel grid: same cell as the manager (thumbnail + primary tag below).
+ * [cellWidthPx] pins the cell width for horizontal layouts (e.g. the search strip),
+ * where match_parent would fill the whole viewport.
+ */
 class EmojiPanelAdapter(
+    private val cellWidthPx: Int? = null,
     private val onSend: (EmojiWithTags) -> Unit,
 ) : ListAdapter<EmojiWithTags, EmojiPanelAdapter.Holder>(DIFF) {
     class Holder(val binding: ItemEmojiManageBinding) : RecyclerView.ViewHolder(binding.root)
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder = Holder(ItemEmojiManageBinding.inflate(LayoutInflater.from(parent.context), parent, false))
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
+        val binding = ItemEmojiManageBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+        cellWidthPx?.let { binding.root.layoutParams = RecyclerView.LayoutParams(it, RecyclerView.LayoutParams.WRAP_CONTENT) }
+        return Holder(binding)
+    }
 
     override fun onBindViewHolder(holder: Holder, position: Int) {
         val item = getItem(position)

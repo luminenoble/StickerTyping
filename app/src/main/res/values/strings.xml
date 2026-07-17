@@ -277,4 +277,14 @@
     <string name="emoji_send_failed">Target app rejected rich content</string>
     <string name="emoji_tag_all">All</string>
     <string name="emoji_wip">Kaomoji module is under construction</string>
+    <string name="kaomoji_manager">Kaomoji</string>
+    <string name="kaomoji_add">Add kaomoji</string>
+    <string name="kaomoji_content">Kaomoji text</string>
+    <string name="kaomoji_edit">Edit text</string>
+    <string name="kaomoji_delete">Delete</string>
+    <string name="kaomoji_import_txt">Import kaomoji from text file</string>
+    <string name="kaomoji_import_txt_summary">One kaomoji per line; a primary tag is applied to all</string>
+    <string name="kaomoji_import_result">Imported %d kaomoji</string>
+    <string name="emoji_primary_tag_required">Primary tag is required</string>
+    <string name="emoji_search_strip_hint">Pick candidates to search tags</string>
 </resources>

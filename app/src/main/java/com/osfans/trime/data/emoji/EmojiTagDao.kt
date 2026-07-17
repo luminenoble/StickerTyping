@@ -29,22 +29,31 @@ interface EmojiTagDao {
     suspend fun deleteEmojiCrossRef(emojiId: Long, tagId: Long)
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertKaomojiCrossRef(crossRef: KaomojiTagCrossRef)
+
+    @Query("DELETE FROM kaomoji_tag_cross_ref WHERE kaomojiId = :kaomojiId AND tagId = :tagId")
+    suspend fun deleteKaomojiCrossRef(kaomojiId: Long, tagId: Long)
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertCollectionCrossRef(crossRef: CollectionTagCrossRef)
 
     @Query("DELETE FROM emoji_collection_tag_cross_ref WHERE collectionId = :collectionId AND tagId = :tagId")
     suspend fun deleteCollectionCrossRef(collectionId: Long, tagId: Long)
 
     /**
-     * Remove tags that are no longer referenced anywhere: not attached to any emoji or
-     * collection, and not anyone's primary tag (primary tags always have a junction row
-     * too, but the extra guard keeps the invariant safe against partial writes).
+     * Remove tags that are no longer referenced anywhere: not attached to any emoji,
+     * kaomoji or collection, and not anyone's primary tag (primary tags always have a
+     * junction row too, but the extra guard keeps the invariant safe against partial
+     * writes).
      */
     @Query(
         """
         DELETE FROM emoji_tag WHERE
             id NOT IN (SELECT tagId FROM emoji_tag_cross_ref)
             AND id NOT IN (SELECT tagId FROM emoji_collection_tag_cross_ref)
+            AND id NOT IN (SELECT tagId FROM kaomoji_tag_cross_ref)
             AND id NOT IN (SELECT primaryTagId FROM emoji)
+            AND id NOT IN (SELECT primaryTagId FROM kaomoji)
         """,
     )
     suspend fun deleteOrphans()

@@ -38,11 +38,6 @@ class EmojiManagerActivity : AppCompatActivity() {
         binding.emojiToolbar.toolbar.setNavigationOnClickListener {
             onBackPressedDispatcher.onBackPressed()
         }
-        supportFragmentManager.addOnBackStackChangedListener {
-            supportActionBar?.setTitle(
-                if (supportFragmentManager.backStackEntryCount > 0) R.string.emoji_settings else R.string.emoji_manager,
-            )
-        }
         if (savedInstanceState == null) {
             supportFragmentManager
                 .beginTransaction()
@@ -56,9 +51,17 @@ class EmojiManagerActivity : AppCompatActivity() {
     }
 
     fun showSettings() {
+        push(EmojiSettingsFragment())
+    }
+
+    fun showKaomoji() {
+        push(KaomojiFragment())
+    }
+
+    private fun push(fragment: androidx.fragment.app.Fragment) {
         supportFragmentManager
             .beginTransaction()
-            .replace(R.id.fragmentContainer, EmojiSettingsFragment())
+            .replace(R.id.fragmentContainer, fragment)
             .addToBackStack(null)
             .commit()
     }

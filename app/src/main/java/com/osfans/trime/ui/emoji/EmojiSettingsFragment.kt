@@ -66,6 +66,21 @@ class EmojiSettingsFragment : PaddingPreferenceFragment() {
             }
         }
 
+    private val importKaomojiTxt =
+        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            uri ?: return@registerForActivityResult
+            lifecycleScope.launch {
+                runCatching { readText(uri).lines() }
+                    .onSuccess { lines -> promptKaomojiTag(lines) }
+                    .onFailure { requireContext().toast(getString(R.string.emoji_action_failed, it.message ?: "?")) }
+            }
+        }
+
+    override fun onResume() {
+        super.onResume()
+        (requireActivity() as? EmojiManagerActivity)?.supportActionBar?.setTitle(R.string.emoji_settings)
+    }
+
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         preferenceScreen =
             preferenceManager.createPreferenceScreen(requireContext()).apply {
@@ -77,6 +92,9 @@ class EmojiSettingsFragment : PaddingPreferenceFragment() {
                         val r = EmojiRepository.syncAll()
                         getString(R.string.emoji_sync_result, r.added, r.removed, r.total)
                     }
+                }
+                addClickPreference(R.string.kaomoji_import_txt, R.string.kaomoji_import_txt_summary) {
+                    importKaomojiTxt.launch(arrayOf("text/*"))
                 }
                 addClickPreference(R.string.emoji_export_json) {
                     exportJson.launch("emoji-backup.json")
@@ -102,6 +120,26 @@ class EmojiSettingsFragment : PaddingPreferenceFragment() {
                 }
             },
         )
+    }
+
+    private fun promptKaomojiTag(lines: List<String>) {
+        val edit = EditText(requireContext())
+        AlertDialog
+            .Builder(requireContext())
+            .setTitle(R.string.emoji_set_primary_tag)
+            .setView(edit)
+            .setPositiveButton(R.string.ok) { _, _ ->
+                val tag = edit.text.toString().trim()
+                if (tag.isEmpty()) {
+                    requireContext().toast(R.string.emoji_primary_tag_required)
+                    return@setPositiveButton
+                }
+                runWithToast {
+                    val added = EmojiRepository.importKaomojiLines(lines, tag)
+                    getString(R.string.kaomoji_import_result, added)
+                }
+            }.setNegativeButton(R.string.cancel, null)
+            .show()
     }
 
     private fun promptCollectionName(folderPath: String, defaultName: String) {

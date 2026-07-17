@@ -17,7 +17,18 @@ import kotlinx.serialization.Serializable
 data class EmojiBackup(
     val version: Int = 1,
     val collections: List<CollectionBackup>,
+    val kaomojis: List<KaomojiItemBackup> = emptyList(),
 ) {
+    @Serializable
+    data class KaomojiItemBackup(
+        val text: String,
+        val primaryTag: String,
+        val tags: List<String>,
+        val isFavorite: Boolean,
+        val useCount: Int,
+        val lastUsedAt: Long,
+    )
+
     @Serializable
     data class CollectionBackup(
         val name: String,

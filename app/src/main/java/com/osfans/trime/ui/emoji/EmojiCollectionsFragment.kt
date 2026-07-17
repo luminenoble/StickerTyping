@@ -91,6 +91,11 @@ class EmojiCollectionsFragment : Fragment() {
         refresh()
     }
 
+    override fun onResume() {
+        super.onResume()
+        updateTitle()
+    }
+
     private fun refresh() {
         viewLifecycleOwner.lifecycleScope.launch {
             collections = EmojiRepository.collections()
@@ -304,7 +309,8 @@ class EmojiCollectionsFragment : Fragment() {
                     setIcon(R.drawable.ic_baseline_settings_24)
                     setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
                 }
-                menu.add(Menu.NONE, MENU_COLLECTION_OPS, 1, R.string.emoji_collection_ops)
+                menu.add(Menu.NONE, MENU_KAOMOJI, 1, R.string.kaomoji_manager)
+                menu.add(Menu.NONE, MENU_COLLECTION_OPS, 2, R.string.emoji_collection_ops)
                 menu.add(Menu.NONE, MENU_BATCH_ADD_TAG, 2, R.string.emoji_batch_add_tag)
                 menu.add(Menu.NONE, MENU_BATCH_FAV, 3, R.string.emoji_favorite)
                 menu.add(Menu.NONE, MENU_BATCH_UNFAV, 4, R.string.emoji_unfavorite)
@@ -314,6 +320,7 @@ class EmojiCollectionsFragment : Fragment() {
 
             override fun onPrepareMenu(menu: Menu) {
                 menu.findItem(MENU_SETTINGS)?.isVisible = !selectionMode
+                menu.findItem(MENU_KAOMOJI)?.isVisible = !selectionMode
                 menu.findItem(MENU_COLLECTION_OPS)?.isVisible = !selectionMode && selectedCollectionId != null
                 menu.findItem(MENU_BATCH_ADD_TAG)?.isVisible = selectionMode
                 menu.findItem(MENU_BATCH_FAV)?.isVisible = selectionMode
@@ -325,6 +332,7 @@ class EmojiCollectionsFragment : Fragment() {
             override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
                 when (menuItem.itemId) {
                     MENU_SETTINGS -> (requireActivity() as EmojiManagerActivity).showSettings()
+                    MENU_KAOMOJI -> (requireActivity() as EmojiManagerActivity).showKaomoji()
                     MENU_COLLECTION_OPS ->
                         collections.firstOrNull { it.id == selectedCollectionId }?.let { showCollectionDialog(it) }
                     MENU_BATCH_ADD_TAG -> {
@@ -373,6 +381,7 @@ class EmojiCollectionsFragment : Fragment() {
     companion object {
         private const val GRID_SPAN = 4
         private const val MENU_SETTINGS = 101
+        private const val MENU_KAOMOJI = 108
         private const val MENU_COLLECTION_OPS = 102
         private const val MENU_BATCH_ADD_TAG = 103
         private const val MENU_BATCH_FAV = 104

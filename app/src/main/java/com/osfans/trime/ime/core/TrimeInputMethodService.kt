@@ -49,6 +49,7 @@ import com.osfans.trime.data.theme.ColorManager
 import com.osfans.trime.data.theme.Theme
 import com.osfans.trime.data.theme.ThemeManager
 import com.osfans.trime.ime.composition.CandidatesView
+import com.osfans.trime.ime.emoji.EmojiSearchState
 import com.osfans.trime.ime.keyboard.InputFeedbackManager
 import com.osfans.trime.receiver.RimeIntentReceiver
 import com.osfans.trime.util.any
@@ -514,6 +515,9 @@ open class TrimeInputMethodService : LifecycleInputMethodService() {
         restarting: Boolean,
     ) {
         composingText = ""
+        // leave emoji search mode when a new editor session starts, so typing never
+        // silently disappears into a stale query
+        EmojiSearchState.deactivate()
         Timber.d("onStartInput: restarting=$restarting")
         val isNullType = attribute.inputType and InputType.TYPE_MASK_CLASS == InputType.TYPE_NULL
         postRimeJob {
@@ -580,6 +584,17 @@ open class TrimeInputMethodService : LifecycleInputMethodService() {
 
     fun commitText(text: String) {
         val ic = currentInputConnection ?: return
+
+        // emoji search mode: the committed text becomes the tag query instead of going
+        // to the app; wipe any inline preedit that rime may have painted in the editor
+        if (EmojiSearchState.intercept(text)) {
+            if (composingText.isNotEmpty()) {
+                ic.setComposingText("", 1)
+                ic.finishComposingText()
+            }
+            composingText = ""
+            return
+        }
 
         // when composing text equals commit content, finish composing text as-is
         if (composingText.isNotEmpty() && composingText == text) {
