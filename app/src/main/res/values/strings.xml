@@ -274,4 +274,7 @@
     <string name="emoji_batch_add_tag">Add tag to selection</string>
     <string name="emoji_exit_selection">Exit selection</string>
     <string name="emoji_collection_path">Path: %1$s\nTags: %2$s</string>
+    <string name="emoji_send_failed">Target app rejected rich content</string>
+    <string name="emoji_tag_all">All</string>
+    <string name="emoji_wip">Kaomoji module is under construction</string>
 </resources>

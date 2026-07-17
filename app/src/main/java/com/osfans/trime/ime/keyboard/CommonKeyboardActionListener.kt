@@ -27,6 +27,7 @@ import com.osfans.trime.ime.clipboard.ClipboardWindow
 import com.osfans.trime.ime.core.TrimeInputMethodService
 import com.osfans.trime.ime.dependency.InputDependencyManager
 import com.osfans.trime.ime.dialog.EnabledSchemaPickerDialog
+import com.osfans.trime.ime.emoji.EmojiWindow
 import com.osfans.trime.ime.enums.Keycode
 import com.osfans.trime.ime.switches.SwitchOptionWindow
 import com.osfans.trime.ime.symbol.LiquidData
@@ -197,6 +198,8 @@ class CommonKeyboardActionListener {
                     "liquid_keyboard" -> handleLiquidKeyboard(arg)
                     "menu_keyboard" -> windowManager.attachWindow(SwitchOptionWindow())
                     "clipboard_window" -> handleClipboardWindow(arg)
+                    "emoji_window" -> windowManager.attachWindow(EmojiWindow())
+                    "kaomoji_window" -> service.toast(R.string.emoji_wip)
                     "set_color_scheme" -> handleColorScheme(arg)
                     "set_theme" -> handleTheme(arg)
                     "broadcast" -> service.sendBroadcast(Intent(arg))
