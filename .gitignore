@@ -481,3 +481,7 @@ app/src/main/jni/boost/
 # kotlin
 .kotlin
 
+stickertyping.jks
+keystore.properties
+app/src/main/assets/shared/cn_dicts/
+app/src/main/assets/shared/wanxiang-lts-zh-hans.gram

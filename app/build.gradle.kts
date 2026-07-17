@@ -62,7 +62,7 @@ android {
                     }
                 }
 
-            resValue("string", "trime_app_name", "@string/app_name_release")
+            resValue("string", "trime_app_name", "StickerTyping")
         }
         debug {
             applicationIdSuffix = ".debug"

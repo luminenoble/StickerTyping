@@ -7,7 +7,12 @@ package com.osfans.trime.ime.emoji
 
 import android.content.ClipData
 import android.content.ClipDescription
+import android.content.ContentUris
+import android.content.ContentValues
 import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.provider.MediaStore
 import androidx.core.content.FileProvider
 import androidx.core.view.inputmethod.InputConnectionCompat
 import androidx.core.view.inputmethod.InputContentInfoCompat
@@ -57,18 +62,86 @@ class EmojiContentSender(
             if (committed) return Result.COMMITTED
         }
 
-        // degrade: put the image on the clipboard so the user can paste it manually
+        // degrade: put the image on the clipboard so the user can paste it manually.
+        // Tencent apps only recognise gallery-style clips: they resolve the URI through
+        // MediaStore (_data queries) and silently drop foreign provider URIs, so the
+        // image is first copied into MediaStore and the media URI goes on the clipboard
+        // — exactly the clip shape a gallery "copy" produces.
         return runCatching {
-            editorInfo?.packageName?.let {
-                service.grantUriPermission(it, uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            }
-            clipboardManager.setPrimaryClip(ClipData.newUri(service.contentResolver, file.name, uri))
-            Timber.i("Copied %s to clipboard for manual paste", file.name)
+            val clipUri =
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    mediaStoreUri(file, mime) ?: uri
+                } else {
+                    editorInfo?.packageName?.let {
+                        service.grantUriPermission(it, uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    uri
+                }
+            clipboardManager.setPrimaryClip(ClipData.newUri(service.contentResolver, file.name, clipUri))
+            Timber.i("Copied %s to clipboard as %s for manual paste", file.name, clipUri)
             Result.COPIED
-        }.getOrDefault(Result.FAILED)
+        }.getOrElse {
+            Timber.w(it, "Clipboard fallback failed")
+            Result.FAILED
+        }
+    }
+
+    /**
+     * Copy the file into MediaStore (album [ALBUM], deduplicated by display name) and
+     * return the `content://media/...` URI, or null if the insert fails.
+     */
+    @androidx.annotation.RequiresApi(Build.VERSION_CODES.Q)
+    private fun mediaStoreUri(file: File, mime: String): Uri? {
+        val resolver = service.contentResolver
+        val isVideo = mime.startsWith("video/")
+        val collection =
+            if (isVideo) {
+                MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+            } else {
+                MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+            }
+        val relPath = (if (isVideo) "Movies/" else "Pictures/") + ALBUM
+
+        resolver
+            .query(
+                collection,
+                arrayOf(MediaStore.MediaColumns._ID),
+                "${MediaStore.MediaColumns.DISPLAY_NAME} = ? AND ${MediaStore.MediaColumns.RELATIVE_PATH} = ?",
+                arrayOf(file.name, "$relPath/"),
+                null,
+            )?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    return ContentUris.withAppendedId(collection, cursor.getLong(0))
+                }
+            }
+
+        val values =
+            ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, file.name)
+                put(MediaStore.MediaColumns.MIME_TYPE, mime)
+                put(MediaStore.MediaColumns.RELATIVE_PATH, relPath)
+                put(MediaStore.MediaColumns.IS_PENDING, 1)
+            }
+        val inserted = resolver.insert(collection, values) ?: return null
+        val copied =
+            runCatching {
+                resolver.openOutputStream(inserted)?.use { out ->
+                    file.inputStream().use { it.copyTo(out) }
+                } != null
+            }.getOrDefault(false)
+        if (!copied) {
+            resolver.delete(inserted, null, null)
+            return null
+        }
+        values.clear()
+        values.put(MediaStore.MediaColumns.IS_PENDING, 0)
+        resolver.update(inserted, values, null, null)
+        return inserted
     }
 
     companion object {
+        private const val ALBUM = "StickerTyping"
+
         private val MIME_BY_FORMAT =
             mapOf(
                 "png" to "image/png",
