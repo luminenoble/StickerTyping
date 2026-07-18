@@ -30,6 +30,9 @@ interface EmojiDao {
     @Query("SELECT * FROM emoji WHERE filePath = :filePath")
     suspend fun getByPath(filePath: String): EmojiEntity?
 
+    @Query("SELECT * FROM emoji WHERE filePath LIKE '%/' || :fileName LIMIT 1")
+    suspend fun getByFileName(fileName: String): EmojiEntity?
+
     @Query("UPDATE emoji SET useCount = :useCount, lastUsedAt = :lastUsedAt WHERE id = :id")
     suspend fun setUsage(id: Long, useCount: Int, lastUsedAt: Long)
 

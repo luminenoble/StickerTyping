@@ -468,22 +468,26 @@ object EmojiRepository : CoroutineScope by CoroutineScope(SupervisorJob() + Disp
     data class ImportReport(val collections: Int, val restored: Int, val missing: Int)
 
     /**
-     * Merge a backup into the database: register every collection (scanning its folder),
-     * then restore primary tag / tags / favorite / usage onto each emoji whose file
-     * still exists at the recorded path. Emojis whose files are gone are counted in
-     * [ImportReport.missing] and skipped.
+     * Merge a backup into the database: register every collection whose folder still
+     * exists (scanning it), then restore primary tag / tags / favorite / usage onto
+     * each emoji, located by exact path or — for backups made on another device/layout —
+     * by bare file name. Emojis found neither way are counted in [ImportReport.missing]
+     * and skipped.
      */
     suspend fun importBackup(backup: EmojiBackup): ImportReport {
         var restored = 0
         var missing = 0
         for (c in backup.collections) {
-            addCollection(c.name, c.folderPath)
-            val collection = collectionDao.getByFolderPath(c.folderPath) ?: continue
-            for (tag in c.tags) {
-                addTagToCollection(collection.id, tag)
+            if (java.io.File(c.folderPath).isDirectory) {
+                addCollection(c.name, c.folderPath)
+                collectionDao.getByFolderPath(c.folderPath)?.let { collection ->
+                    for (tag in c.tags) {
+                        addTagToCollection(collection.id, tag)
+                    }
+                }
             }
             for (item in c.emojis) {
-                val emoji = emojiDao.getByPath(item.filePath)
+                val emoji = emojiDao.getByPath(item.filePath) ?: emojiDao.getByFileName(item.fileName)
                 if (emoji == null) {
                     missing++
                     continue
