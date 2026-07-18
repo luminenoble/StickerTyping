@@ -55,7 +55,13 @@ class EmojiWindow : BoardWindow.BarBoardWindow() {
     private lateinit var gridView: RecyclerView
 
     private val panelAdapter =
-        EmojiPanelAdapter { item ->
+        EmojiPanelAdapter(onLongPress = { item ->
+            if (sender.shareToCurrentApp(item.emoji)) {
+                service.lifecycleScope.launch { EmojiRepository.markUsed(item.emoji.id) }
+            } else {
+                service.toast(R.string.emoji_send_failed)
+            }
+        }) { item ->
             when (sender.send(item.emoji)) {
                 EmojiContentSender.Result.COMMITTED ->
                     service.lifecycleScope.launch { EmojiRepository.markUsed(item.emoji.id) }

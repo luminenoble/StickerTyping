@@ -24,6 +24,7 @@ import java.io.File
  */
 class EmojiPanelAdapter(
     private val cellWidthPx: Int? = null,
+    private val onLongPress: ((EmojiWithTags) -> Unit)? = null,
     private val onSend: (EmojiWithTags) -> Unit,
 ) : ListAdapter<EmojiWithTags, EmojiPanelAdapter.Holder>(DIFF) {
     class Holder(val binding: ItemEmojiManageBinding) : RecyclerView.ViewHolder(binding.root)
@@ -42,6 +43,12 @@ class EmojiPanelAdapter(
             favBadge.isVisible = item.emoji.isFavorite
             selectionOverlay.isVisible = false
             root.setOnClickListener { onSend(item) }
+            onLongPress?.let { handler ->
+                root.setOnLongClickListener {
+                    handler(item)
+                    true
+                }
+            }
         }
     }
 

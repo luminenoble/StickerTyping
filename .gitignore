@@ -483,5 +483,5 @@ app/src/main/jni/boost/
 
 stickertyping.jks
 keystore.properties
-app/src/main/assets/shared/cn_dicts/
-app/src/main/assets/shared/wanxiang-lts-zh-hans.gram
+app/src/main/assets/rime_data/cn_dicts/
+app/src/main/assets/rime_data/wanxiang-lts-zh-hans.gram

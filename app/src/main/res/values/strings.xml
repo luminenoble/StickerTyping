@@ -309,4 +309,11 @@
     <string name="kaomoji_import_folder_result">%1$d groups, %2$d kaomoji imported</string>
     <string name="kaomoji_import_json">Import kaomoji from JSON</string>
     <string name="kaomoji_import_json_summary">Pack format: groups of entries with primary tag and tags</string>
+    <string name="emoji_sync_all_summary">Re-scans rime/resources: emoji subfolders become collections, kaomoji txt groups register</string>
+    <string name="emoji_clear_paste_cache">Clear paste cache</string>
+    <string name="emoji_clear_paste_cache_summary">Removes copies in the StickerTyping gallery album</string>
+    <string name="emoji_clear_paste_cache_result">Removed %d cached entries</string>
+    <string name="emoji_install_rime_data">Install dictionaries &amp; model</string>
+    <string name="emoji_install_rime_data_summary">Copies bundled cn_dicts and the wanxiang grammar model into the rime user dir (size-verified)</string>
+    <string name="emoji_install_rime_data_result">Copied %1$d files (%3$d MB), %2$d already in place</string>
 </resources>

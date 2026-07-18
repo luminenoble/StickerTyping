@@ -57,7 +57,13 @@ class EmojiSearchStrip(
     private val closeButton = ToolButton(ctx, R.drawable.ic_baseline_deselect_24)
 
     private val resultsAdapter =
-        EmojiPanelAdapter(cellWidthPx = ctx.dp(84)) { item ->
+        EmojiPanelAdapter(cellWidthPx = ctx.dp(84), onLongPress = { item ->
+            if (sender.shareToCurrentApp(item.emoji)) {
+                service.lifecycleScope.launch { EmojiRepository.markUsed(item.emoji.id) }
+            } else {
+                service.toast(R.string.emoji_send_failed)
+            }
+        }) { item ->
             when (sender.send(item.emoji)) {
                 EmojiContentSender.Result.COMMITTED ->
                     service.lifecycleScope.launch { EmojiRepository.markUsed(item.emoji.id) }

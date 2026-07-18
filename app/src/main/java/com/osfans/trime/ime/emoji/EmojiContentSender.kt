@@ -86,12 +86,67 @@ class EmojiContentSender(
         }
     }
 
+    /** Share the emoji as an image directly to the current target app (QQ path). */
+    fun shareToCurrentApp(emoji: EmojiEntity): Boolean {
+        val file = File(emoji.filePath)
+        if (!file.exists()) return false
+        val mime = MIME_BY_FORMAT[emoji.format] ?: return false
+        val uri =
+            FileProvider.getUriForFile(service, "${BuildConfig.APPLICATION_ID}.fileprovider", file)
+        val target = service.currentInputEditorInfo?.packageName
+        val send =
+            Intent(Intent.ACTION_SEND).apply {
+                type = mime
+                putExtra(Intent.EXTRA_STREAM, uri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+                target?.let { setPackage(it) }
+            }
+        return runCatching {
+            service.startActivity(send)
+            true
+        }.recoverCatching {
+            // target app has no direct SEND handler — fall back to a chooser
+            service.startActivity(
+                Intent.createChooser(send.apply { setPackage(null) }, null)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+            true
+        }.getOrDefault(false)
+    }
+
     /**
-     * Copy the file into MediaStore (album [ALBUM], deduplicated by display name) and
-     * return the `content://media/...` URI, or null if the insert fails.
+     * Return a gallery-style URI for [file]. Files under the resources dir are indexed
+     * by MediaStore in place (no duplicate), so first look the original path up; only
+     * fall back to copying into the [ALBUM] album when it is not indexed (yet).
      */
     @androidx.annotation.RequiresApi(Build.VERSION_CODES.Q)
     private fun mediaStoreUri(file: File, mime: String): Uri? {
+        val resolver = service.contentResolver
+        val isVideo = mime.startsWith("video/")
+        val queryCollection =
+            if (isVideo) {
+                MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+            } else {
+                MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+            }
+        resolver
+            .query(
+                queryCollection,
+                arrayOf(MediaStore.MediaColumns._ID),
+                "${MediaStore.MediaColumns.DATA} = ?",
+                arrayOf(file.absolutePath),
+                null,
+            )?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    return ContentUris.withAppendedId(queryCollection, cursor.getLong(0))
+                }
+            }
+        return albumCopyUri(file, mime)
+    }
+
+    /** Legacy path: copy into the [ALBUM] album and return the media URI. */
+    @androidx.annotation.RequiresApi(Build.VERSION_CODES.Q)
+    private fun albumCopyUri(file: File, mime: String): Uri? {
         val resolver = service.contentResolver
         val isVideo = mime.startsWith("video/")
         val collection =
@@ -141,6 +196,27 @@ class EmojiContentSender(
 
     companion object {
         private const val ALBUM = "StickerTyping"
+
+        /** Delete all paste-cache copies in the [ALBUM] album. @return rows removed */
+        fun clearPasteCache(context: android.content.Context): Int {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return 0
+            val resolver = context.contentResolver
+            var removed = 0
+            listOf(
+                MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY) to "Pictures/$ALBUM/",
+                MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY) to "Movies/$ALBUM/",
+            ).forEach { (collection, relPath) ->
+                removed +=
+                    runCatching {
+                        resolver.delete(
+                            collection,
+                            "${MediaStore.MediaColumns.RELATIVE_PATH} = ?",
+                            arrayOf(relPath),
+                        )
+                    }.getOrDefault(0)
+            }
+            return removed
+        }
 
         private val MIME_BY_FORMAT =
             mapOf(

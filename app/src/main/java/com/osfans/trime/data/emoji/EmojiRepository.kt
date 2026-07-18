@@ -121,6 +121,25 @@ object EmojiRepository : CoroutineScope by CoroutineScope(SupervisorJob() + Disp
             SyncResult(acc.added + r.added, acc.removed + r.removed, acc.total + r.total)
         }
 
+    /**
+     * Reconcile the whole canonical resources dir: every subfolder of resources/emoji
+     * becomes (or stays) a collection, every txt line under resources/kaomoji/<group>/ is
+     * registered under its group, then all collections sync. Emoji files are handed to
+     * MediaStore so gallery-style clipboard URIs exist at paste time.
+     */
+    suspend fun syncResources(context: Context): SyncResult {
+        EmojiResources.emojiRoot.listFiles { f -> f.isDirectory }?.forEach { dir ->
+            collectionDao.insert(EmojiCollectionEntity(name = dir.name, folderPath = dir.absolutePath))
+        }
+        for ((group, lines) in EmojiResources.kaomojiGroupsOnDisk()) {
+            importKaomojiLines(lines, group, group)
+        }
+        val result = syncAll()
+        val files = emojiDao.getAllWithTags().map { java.io.File(it.emoji.filePath) }
+        EmojiResources.scanMedia(context, files)
+        return result
+    }
+
     /** Unregister a collection and all its emoji rows. Files on disk are untouched. */
     suspend fun removeCollection(collectionId: Long) {
         db.withTransaction {

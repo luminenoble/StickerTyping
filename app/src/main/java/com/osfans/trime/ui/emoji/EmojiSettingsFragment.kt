@@ -16,7 +16,10 @@ import androidx.preference.PreferenceScreen
 import com.osfans.trime.R
 import com.osfans.trime.data.emoji.EmojiBackup
 import com.osfans.trime.data.emoji.EmojiRepository
+import com.osfans.trime.data.emoji.EmojiResources
 import com.osfans.trime.data.emoji.KaomojiPack
+import com.osfans.trime.data.emoji.RimeDataInstaller
+import com.osfans.trime.ime.emoji.EmojiContentSender
 import com.osfans.trime.ui.common.PaddingPreferenceFragment
 import com.osfans.trime.util.getFileFromUri
 import com.osfans.trime.util.requestExternalStoragePermission
@@ -85,7 +88,14 @@ class EmojiSettingsFragment : PaddingPreferenceFragment() {
                     ?: return@registerForActivityResult
             val folder = requireContext().getFileFromUri(docUri) ?: return@registerForActivityResult
             runWithToast {
-                val (groups, added) = EmojiRepository.importKaomojiFolder(folder.absolutePath)
+                // copy txts into resources/kaomoji/<stem>/ then register from disk
+                withContext(Dispatchers.IO) { EmojiResources.copyKaomojiFolder(folder) }
+                var groups = 0
+                var added = 0
+                for ((group, lines) in EmojiResources.kaomojiGroupsOnDisk()) {
+                    groups++
+                    added += EmojiRepository.importKaomojiLines(lines, group, group)
+                }
                 getString(R.string.kaomoji_import_folder_result, groups, added)
             }
         }
@@ -111,9 +121,9 @@ class EmojiSettingsFragment : PaddingPreferenceFragment() {
                 addClickPreference(R.string.emoji_import_folder, R.string.emoji_import_folder_summary) {
                     pickFolder.launch(null)
                 }
-                addClickPreference(R.string.emoji_sync_all) {
+                addClickPreference(R.string.emoji_sync_all, R.string.emoji_sync_all_summary) {
                     runWithToast {
-                        val r = EmojiRepository.syncAll()
+                        val r = EmojiRepository.syncResources(requireContext())
                         getString(R.string.emoji_sync_result, r.added, r.removed, r.total)
                     }
                 }
@@ -131,6 +141,29 @@ class EmojiSettingsFragment : PaddingPreferenceFragment() {
                 }
                 addClickPreference(R.string.emoji_import_json) {
                     importJson.launch(arrayOf("application/json"))
+                }
+                addClickPreference(R.string.emoji_clear_paste_cache, R.string.emoji_clear_paste_cache_summary) {
+                    runWithToast {
+                        val removed =
+                            withContext(Dispatchers.IO) {
+                                EmojiContentSender.clearPasteCache(requireContext())
+                            }
+                        getString(R.string.emoji_clear_paste_cache_result, removed)
+                    }
+                }
+                addClickPreference(R.string.emoji_install_rime_data, R.string.emoji_install_rime_data_summary) {
+                    runWithToast {
+                        val report =
+                            withContext(Dispatchers.IO) {
+                                RimeDataInstaller.install(requireContext().assets)
+                            }
+                        getString(
+                            R.string.emoji_install_rime_data_result,
+                            report.copied,
+                            report.skipped,
+                            report.bytes / (1024 * 1024),
+                        )
+                    }
                 }
                 addClickPreference(R.string.emoji_storage_permission) {
                     requireContext().requestExternalStoragePermission()
@@ -176,6 +209,9 @@ class EmojiSettingsFragment : PaddingPreferenceFragment() {
                 val group = groupInput.text.toString().trim().ifEmpty { null }
                 runWithToast {
                     val added = EmojiRepository.importKaomojiLines(lines, tag, group)
+                    withContext(Dispatchers.IO) {
+                        EmojiResources.writeKaomojiLines(lines, group ?: tag)
+                    }
                     getString(R.string.kaomoji_import_result, added)
                 }
             }.setNegativeButton(R.string.cancel, null)
@@ -192,7 +228,13 @@ class EmojiSettingsFragment : PaddingPreferenceFragment() {
             .setPositiveButton(R.string.ok) { _, _ ->
                 val name = edit.text.toString().trim().ifEmpty { defaultName }
                 runWithToast {
-                    val r = EmojiRepository.addCollection(name, folderPath)
+                    // copy into the canonical resources dir; the collection points there
+                    val (dest, _) =
+                        withContext(Dispatchers.IO) {
+                            EmojiResources.copyEmojiFolder(java.io.File(folderPath), name)
+                        }
+                    val r = EmojiRepository.addCollection(name, dest.absolutePath)
+                    EmojiResources.scanMedia(requireContext(), dest.listFiles().orEmpty().toList())
                     getString(R.string.emoji_sync_result, r.added, r.removed, r.total)
                 }
             }.setNegativeButton(R.string.cancel, null)
