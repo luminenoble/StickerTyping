@@ -312,7 +312,4 @@
     <string name="emoji_clear_paste_cache">清空粘贴缓存</string>
     <string name="emoji_clear_paste_cache_summary">删除相册 StickerTyping 中的粘贴副本</string>
     <string name="emoji_clear_paste_cache_result">已清除 %d 条缓存</string>
-    <string name="emoji_install_rime_data">安装词库与模型</string>
-    <string name="emoji_install_rime_data_summary">把内置 cn_dicts 与万象语法模型复制到 rime 用户目录(按大小校验,缺才拷)</string>
-    <string name="emoji_install_rime_data_result">复制 %1$d 个文件(%3$d MB),%2$d 个已就位</string>
 </resources>

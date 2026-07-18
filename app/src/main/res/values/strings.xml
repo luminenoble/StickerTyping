@@ -313,7 +313,4 @@
     <string name="emoji_clear_paste_cache">Clear paste cache</string>
     <string name="emoji_clear_paste_cache_summary">Removes copies in the StickerTyping gallery album</string>
     <string name="emoji_clear_paste_cache_result">Removed %d cached entries</string>
-    <string name="emoji_install_rime_data">Install dictionaries &amp; model</string>
-    <string name="emoji_install_rime_data_summary">Copies bundled cn_dicts and the wanxiang grammar model into the rime user dir (size-verified)</string>
-    <string name="emoji_install_rime_data_result">Copied %1$d files (%3$d MB), %2$d already in place</string>
 </resources>

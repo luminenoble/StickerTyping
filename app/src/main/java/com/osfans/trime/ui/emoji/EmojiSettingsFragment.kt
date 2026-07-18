@@ -18,7 +18,6 @@ import com.osfans.trime.data.emoji.EmojiBackup
 import com.osfans.trime.data.emoji.EmojiRepository
 import com.osfans.trime.data.emoji.EmojiResources
 import com.osfans.trime.data.emoji.KaomojiPack
-import com.osfans.trime.data.emoji.RimeDataInstaller
 import com.osfans.trime.ime.emoji.EmojiContentSender
 import com.osfans.trime.ui.common.PaddingPreferenceFragment
 import com.osfans.trime.util.getFileFromUri
@@ -149,20 +148,6 @@ class EmojiSettingsFragment : PaddingPreferenceFragment() {
                                 EmojiContentSender.clearPasteCache(requireContext())
                             }
                         getString(R.string.emoji_clear_paste_cache_result, removed)
-                    }
-                }
-                addClickPreference(R.string.emoji_install_rime_data, R.string.emoji_install_rime_data_summary) {
-                    runWithToast {
-                        val report =
-                            withContext(Dispatchers.IO) {
-                                RimeDataInstaller.install(requireContext().assets)
-                            }
-                        getString(
-                            R.string.emoji_install_rime_data_result,
-                            report.copied,
-                            report.skipped,
-                            report.bytes / (1024 * 1024),
-                        )
                     }
                 }
                 addClickPreference(R.string.emoji_storage_permission) {

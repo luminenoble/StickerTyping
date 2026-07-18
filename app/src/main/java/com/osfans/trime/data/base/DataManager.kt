@@ -7,7 +7,6 @@ package com.osfans.trime.data.base
 import android.content.res.AssetManager
 import android.os.Build
 import android.os.Environment
-import com.osfans.trime.data.emoji.RimeDataInstaller
 import com.osfans.trime.data.prefs.AppPrefs
 import com.osfans.trime.util.FileUtils
 import com.osfans.trime.util.ResourceUtils
@@ -89,13 +88,7 @@ object DataManager {
 
         val newChecksums = appContext.assets.dataChecksums()
 
-        // bundled rime payload (dicts + grammar model) installs into the user data dir
-        // with its own size verification — keep it out of the shared-assets sync
-        runCatching { RimeDataInstaller.install(appContext.assets) }
-            .onFailure { Timber.e(it, "Rime data install failed") }
-
         DataDiff.diff(oldChecksums, newChecksums).sortedByDescending { it.ordinal }.forEach {
-            if (it.path.startsWith("rime_data")) return@forEach
             Timber.d("Diff: $it")
             when (it) {
                 is DataDiff.CreateFile,
