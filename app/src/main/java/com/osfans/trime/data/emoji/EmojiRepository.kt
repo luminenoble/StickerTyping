@@ -148,9 +148,13 @@ object EmojiRepository : CoroutineScope by CoroutineScope(SupervisorJob() + Disp
         val livePaths = liveDirs.mapTo(HashSet()) { it.absolutePath }
         collectionDao
             .getAll()
-            .filter { it.folderPath.startsWith(emojiRoot.absolutePath + java.io.File.separator) }
-            .filter { it.folderPath !in livePaths }
-            .forEach { removeCollection(it.id) }
+            .filter { c ->
+                // stale under resources/emoji (deleted or bare wrapper dir), or a
+                // registration whose folder is gone entirely (e.g. a botched import)
+                val inResources = c.folderPath.startsWith(emojiRoot.absolutePath + java.io.File.separator)
+                (inResources && c.folderPath !in livePaths) ||
+                    (!inResources && !java.io.File(c.folderPath).isDirectory)
+            }.forEach { removeCollection(it.id) }
         for ((group, lines) in EmojiResources.kaomojiGroupsOnDisk()) {
             importKaomojiLines(lines, group, group)
         }
@@ -474,7 +478,7 @@ object EmojiRepository : CoroutineScope by CoroutineScope(SupervisorJob() + Disp
      * by bare file name. Emojis found neither way are counted in [ImportReport.missing]
      * and skipped.
      */
-    suspend fun importBackup(backup: EmojiBackup): ImportReport {
+    suspend fun importBackup(backup: EmojiBackup): ImportReport = db.withTransaction {
         var restored = 0
         var missing = 0
         for (c in backup.collections) {
@@ -513,7 +517,7 @@ object EmojiRepository : CoroutineScope by CoroutineScope(SupervisorJob() + Disp
             kaomojiDao.setUsage(kaomoji.id, item.useCount, item.lastUsedAt)
             restored++
         }
-        return ImportReport(backup.collections.size, restored, missing)
+        ImportReport(backup.collections.size, restored, missing)
     }
 
     /**

@@ -320,9 +320,15 @@ class EmojiCollectionsFragment : Fragment() {
     }
 
     private fun runAndRefresh(block: suspend () -> Unit) {
+        val appCtx = requireContext().applicationContext
         viewLifecycleOwner.lifecycleScope.launch {
-            runCatching { block() }
-                .onFailure { requireContext().toast(getString(R.string.emoji_action_failed, it.message ?: "?")) }
+            try {
+                block()
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                appCtx.toast(appCtx.getString(R.string.emoji_action_failed, e.message ?: "?"))
+            }
             refresh()
         }
     }

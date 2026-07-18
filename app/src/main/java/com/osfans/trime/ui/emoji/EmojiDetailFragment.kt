@@ -132,9 +132,15 @@ class EmojiDetailFragment : Fragment() {
             .setTitle(titleRes)
             .setMessage(warnRes)
             .setPositiveButton(R.string.ok) { _, _ ->
+                val appCtx = requireContext().applicationContext
                 viewLifecycleOwner.lifecycleScope.launch {
-                    runCatching { EmojiRepository.deleteEmojis(listOf(emojiId), deleteFiles) }
-                        .onFailure { requireContext().toast(getString(R.string.emoji_action_failed, it.message ?: "?")) }
+                    try {
+                        EmojiRepository.deleteEmojis(listOf(emojiId), deleteFiles)
+                    } catch (e: kotlinx.coroutines.CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        appCtx.toast(appCtx.getString(R.string.emoji_action_failed, e.message ?: "?"))
+                    }
                     parentFragmentManager.popBackStack()
                 }
             }.setNegativeButton(R.string.cancel, null)
@@ -155,9 +161,15 @@ class EmojiDetailFragment : Fragment() {
     }
 
     private fun runAndReload(block: suspend () -> Unit) {
+        val appCtx = requireContext().applicationContext
         viewLifecycleOwner.lifecycleScope.launch {
-            runCatching { block() }
-                .onFailure { requireContext().toast(getString(R.string.emoji_action_failed, it.message ?: "?")) }
+            try {
+                block()
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                appCtx.toast(appCtx.getString(R.string.emoji_action_failed, e.message ?: "?"))
+            }
             reload()
         }
     }
