@@ -131,6 +131,9 @@
     <string name="about">About</string>
     <string name="storage">Storage</string>
     <string name="maintenance">Maintenance</string>
+    <string name="import_rime_data_folder">Import rime data from folder</string>
+    <string name="import_rime_data_folder_summary">Copy every file of a folder (schemas, dictionaries, models) into the rime user dir, then redeploy manually</string>
+    <string name="import_rime_data_folder_result">Imported %1$d files, please redeploy</string>
     <string name="loading">Loading</string>
     <string name="success">success</string>
     <string name="failure">failure</string>

@@ -218,6 +218,30 @@ class ProfileSettingsFragment : PaddingPreferenceFragment() {
             }
             addCategory(R.string.maintenance) {
                 isIconSpaceReserved = false
+                addPreference(R.string.import_rime_data_folder, R.string.import_rime_data_folder_summary) {
+                    launcherResultCallback = { path ->
+                        lifecycleScope.withLoadingDialog(ctx) {
+                            val count = withContext(Dispatchers.IO) {
+                                val src = File(path)
+                                val dest = DataManager.userDataDir
+                                var copied = 0
+                                src.walkTopDown()
+                                    // compiled artifacts and VCS/hidden dirs are recreated on deploy
+                                    .onEnter { it.name != "build" && !it.name.startsWith(".") }
+                                    .filter { it.isFile && !it.name.startsWith(".") }
+                                    .forEach { file ->
+                                        val target = dest.resolve(file.relativeTo(src).path)
+                                        target.parentFile?.mkdirs()
+                                        file.copyTo(target, overwrite = true)
+                                        copied++
+                                    }
+                                copied
+                            }
+                            ctx.toast(getString(R.string.import_rime_data_folder_result, count))
+                        }
+                    }
+                    browseLauncher.launch(null)
+                }
                 addPreference(R.string.reset, R.string.reset_hint) {
                     val items = ctx.assets.list("shared") ?: return@addPreference
                     val checked = BooleanArray(items.size) { false }
