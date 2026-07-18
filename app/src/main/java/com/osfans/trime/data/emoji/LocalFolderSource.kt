@@ -11,7 +11,8 @@ import java.io.File
 
 /**
  * [EmojiImportSource] backed by an on-device folder (one collection = one folder).
- * Walks the folder recursively and reports every file with a supported extension.
+ * Reports the folder's direct children with a supported extension — never recurses,
+ * so nested subfolders can be independent collections without double-registration.
  * File names are used only to locate the bytes — they contribute nothing to tags.
  */
 class LocalFolderSource(
@@ -21,10 +22,9 @@ class LocalFolderSource(
         val root = File(folderPath)
         if (!root.isDirectory) return@withContext emptyList()
         root
-            .walkTopDown()
-            .filter { it.isFile && it.extension.lowercase() in SUPPORTED_FORMATS }
+            .listFiles { f -> f.isFile && f.extension.lowercase() in SUPPORTED_FORMATS }
+            .orEmpty()
             .map { EmojiImportSource.CandidateEmoji(it.absolutePath, it.extension.lowercase()) }
-            .toList()
     }
 
     companion object {

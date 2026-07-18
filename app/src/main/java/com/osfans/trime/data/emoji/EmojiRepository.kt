@@ -122,15 +122,35 @@ object EmojiRepository : CoroutineScope by CoroutineScope(SupervisorJob() + Disp
         }
 
     /**
-     * Reconcile the whole canonical resources dir: every subfolder of resources/emoji
-     * becomes (or stays) a collection, every txt line under resources/kaomoji/<group>/ is
-     * registered under its group, then all collections sync. Emoji files are handed to
-     * MediaStore so gallery-style clipboard URIs exist at paste time.
+     * Reconcile the whole canonical resources dir: every dir under resources/emoji that
+     * directly holds supported files becomes (or stays) a collection — at any depth, so
+     * a whole pasted tree still partitions by its leaf folders. Bare wrapper dirs and
+     * registrations whose dir vanished are dropped. Every txt line under
+     * resources/kaomoji/<group>/ is registered under its group, then all collections
+     * sync. Emoji files are handed to MediaStore so gallery-style clipboard URIs exist
+     * at paste time.
      */
     suspend fun syncResources(context: Context): SyncResult {
-        EmojiResources.emojiRoot.listFiles { f -> f.isDirectory }?.forEach { dir ->
+        val emojiRoot = EmojiResources.emojiRoot
+        val liveDirs =
+            emojiRoot
+                .walkTopDown()
+                .filter { dir ->
+                    dir.isDirectory &&
+                        dir != emojiRoot &&
+                        dir.listFiles()?.any {
+                            it.isFile && it.extension.lowercase() in LocalFolderSource.SUPPORTED_FORMATS
+                        } == true
+                }.toList()
+        liveDirs.forEach { dir ->
             collectionDao.insert(EmojiCollectionEntity(name = dir.name, folderPath = dir.absolutePath))
         }
+        val livePaths = liveDirs.mapTo(HashSet()) { it.absolutePath }
+        collectionDao
+            .getAll()
+            .filter { it.folderPath.startsWith(emojiRoot.absolutePath + java.io.File.separator) }
+            .filter { it.folderPath !in livePaths }
+            .forEach { removeCollection(it.id) }
         for ((group, lines) in EmojiResources.kaomojiGroupsOnDisk()) {
             importKaomojiLines(lines, group, group)
         }
