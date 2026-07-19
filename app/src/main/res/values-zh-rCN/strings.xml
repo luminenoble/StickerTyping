@@ -128,7 +128,7 @@
     <string name="storage">存储</string>
     <string name="maintenance">维护</string>
     <string name="import_rime_data_folder">从文件夹导入 rime 配置</string>
-    <string name="import_rime_data_folder_summary">把所选文件夹内全部文件(方案、词库、模型等)复制到 rime 用户目录,完成后需手动重新部署</string>
+    <string name="import_rime_data_folder_summary">把所选文件夹内全部文件(方案、词库、模型、userdb 习惯库)复制到 rime 用户目录;跳过 build/ 与安装标识,完成后需手动重新部署</string>
     <string name="import_rime_data_folder_result">已导入 %1$d 个文件,请重新部署</string>
     <string name="loading">正在加载</string>
     <string name="reset">恢复默认设置</string>

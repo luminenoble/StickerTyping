@@ -226,9 +226,16 @@ class ProfileSettingsFragment : PaddingPreferenceFragment() {
                                 val dest = DataManager.userDataDir
                                 var copied = 0
                                 src.walkTopDown()
-                                    // compiled artifacts and VCS/hidden dirs are recreated on deploy
-                                    .onEnter { it.name != "build" && !it.name.startsWith(".") }
-                                    .filter { it.isFile && !it.name.startsWith(".") }
+                                    // build/ + sync/ are compiled/installation output, remade on deploy;
+                                    // skip hidden (.git etc.)
+                                    .onEnter {
+                                        it.name != "build" && it.name != "sync" && !it.name.startsWith(".")
+                                    }
+                                    .filter {
+                                        it.isFile && !it.name.startsWith(".") &&
+                                            // let this device mint its own installation identity
+                                            it.name !in SKIP_IMPORT_FILES
+                                    }
                                     .forEach { file ->
                                         val target = dest.resolve(file.relativeTo(src).path)
                                         target.parentFile?.mkdirs()
@@ -279,5 +286,11 @@ class ProfileSettingsFragment : PaddingPreferenceFragment() {
         prefs.periodicBackgroundSync.unregisterOnChangeListener(onBackgroundSyncEnable)
         prefs.periodicBackgroundSyncInterval.unregisterOnChangeListener(onSyncIntervalChange)
         prefs.userDataDir.unregisterOnChangeListener(onUserDataDirChange)
+    }
+
+    companion object {
+        // installation-specific state a foreign frontend (Weasel/Squirrel) leaves behind;
+        // this device should generate its own on first deploy instead of adopting theirs
+        private val SKIP_IMPORT_FILES = setOf("installation.yaml", "user.yaml")
     }
 }
