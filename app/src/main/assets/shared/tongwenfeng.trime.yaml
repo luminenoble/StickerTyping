@@ -1062,13 +1062,20 @@ tool_bar:
       padding: 10
     action: Mode_switch
 
+  simp_trad_button: &simp_trad_button
+    foreground:
+      option_styles: ["简", "繁"] # 跟随 traditionalization 开关，简体时显示“简”，繁体时显示“繁”
+      font_size: 18
+      padding: 10
+    action: Trad_switch
+
   full_shape_button: &full_shape_button
     foreground:
       option_styles: ["ic@moon_full", "ic@moon_new"]
     action: Zenkaku_Hankaku
 
   # 右侧按钮列表（从右向左排列）
-  buttons: [ *emoji_button, *kaomoji_button, *emoji_search_button, *clipboard_button, *ascii_mode_button ]
+  buttons: [ *emoji_button, *kaomoji_button, *emoji_search_button, *clipboard_button, *ascii_mode_button, *simp_trad_button ]
 
 #键盘布局
 preset_keyboards:
@@ -4045,6 +4052,7 @@ preset_keys:
   Mode_switch: {toggle: ascii_mode, functional: false, send: Mode_switch, states: [ 中文, 西文 ]}
   Zenkaku_Hankaku: {toggle: full_shape, send: Mode_switch, states: [ 半角, 全角 ]}
   Henkan: {toggle: simplification, send: Mode_switch, states: [ 漢字, 汉字 ]}
+  Trad_switch: {toggle: traditionalization, send: Mode_switch, states: [ 简, 繁 ]}
   Charset_switch: {toggle: extended_charset, send: Mode_switch, states: [ 常用, 增广 ]}
   Punct_switch: {toggle: ascii_punct, send: Mode_switch, states: [ 。，, ．， ]}
   # trime设置
